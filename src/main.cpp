@@ -16,6 +16,8 @@
 #include <webgpu/webgpu.h>
 #include <webgpu/webgpu_cpp.h>
 
+#include <clap/clap.h>
+
 // This example can also compile and run with Emscripten! See 'Makefile.emscripten' for details.
 #ifdef __EMSCRIPTEN__
 #include <functional>
@@ -35,17 +37,17 @@ static void MainLoopForEmscripten() {
 #include <stdio.h>
 
 // Global WebGPU required states
-static WGPUInstance wgpu_instance = nullptr;
-static WGPUDevice wgpu_device = nullptr;
-static WGPUSurface wgpu_surface = nullptr;
-static WGPUTextureFormat wgpu_preferred_fmt = WGPUTextureFormat_RGBA8Unorm;
-static WGPUSwapChain wgpu_swap_chain = nullptr;
+static auto wgpu_instance = WGPUInstance{nullptr};
+static auto wgpu_device = WGPUDevice{nullptr};
+static auto wgpu_surface = WGPUSurface{nullptr};
+static auto wgpu_preferred_fmt = WGPUTextureFormat{WGPUTextureFormat_RGBA8Unorm};
+static auto swapChain = WGPUSwapChain{nullptr};
 static int swapChainWidth = 1280;
 static int swapChainHeight = 720;
 
 // Forward declarations
-static bool InitWGPU(GLFWwindow* window);
-static void CreateSwapChain(int width, int height);
+static bool initWGPU(GLFWwindow* window);
+static void createSwapChain(int width, int height);
 
 static void glfw_error_callback(int error, const char* description) {
     printf("GLFW Error %d: %s\n", error, description);
@@ -114,14 +116,14 @@ int main(int, char**) {
     }
 
     // Initialize the WebGPU environment
-    if (!InitWGPU(window)) {
+    if (!initWGPU(window)) {
         if (window) {
             glfwDestroyWindow(window);
         }
         glfwTerminate();
         return 1;
     }
-    CreateSwapChain(swapChainWidth, swapChainHeight);
+    createSwapChain(swapChainWidth, swapChainHeight);
     glfwShowWindow(window);
 
     // Setup Dear ImGui context
@@ -150,8 +152,8 @@ int main(int, char**) {
     ImGui_ImplWGPU_Init(&init_info);
 
     // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
+    bool showDemoWindow = true;
+    bool showAnotherWindow = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a
@@ -173,7 +175,7 @@ int main(int, char**) {
         glfwGetFramebufferSize((GLFWwindow*)window, &width, &height);
         if (width != swapChainWidth || height != swapChainHeight) {
             ImGui_ImplWGPU_InvalidateDeviceObjects();
-            CreateSwapChain(width, height);
+            createSwapChain(width, height);
             ImGui_ImplWGPU_CreateDeviceObjects();
         }
 
@@ -182,14 +184,10 @@ int main(int, char**) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You
-        // can browse its code to learn more about Dear ImGui!).
-        if (show_demo_window) {
-            ImGui::ShowDemoWindow(&show_demo_window);
+        if (showDemoWindow) {
+            ImGui::ShowDemoWindow(&showDemoWindow);
         }
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a
-        // named window.
         {
             static float f = 0.0f;
             static bool audioIsEnabled = false;
@@ -198,8 +196,8 @@ int main(int, char**) {
             ImGui::Begin("Hello, world!");
 
             ImGui::Text("This is some useful text.");
-            ImGui::Checkbox("Demo Window", &show_demo_window);
-            ImGui::Checkbox("Another Window", &show_another_window);
+            ImGui::Checkbox("Demo Window", &showDemoWindow);
+            ImGui::Checkbox("Another Window", &showAnotherWindow);
             ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
             ImGui::ColorEdit3("clear color", (float*)&clear_color);
 
@@ -240,14 +238,11 @@ int main(int, char**) {
             ImGui::End();
         }
 
-        // 3. Show another simple window.
-        if (show_another_window) {
-            // Pass a pointer to our bool variable (the window will have a closing button that will
-            // clear the bool when clicked)
-            ImGui::Begin("Another Window", &show_another_window);
+        if (showAnotherWindow) {
+            ImGui::Begin("Another Window", &showAnotherWindow);
             ImGui::Text("Hello from another window!");
             if (ImGui::Button("Close Me")) {
-                show_another_window = false;
+                showAnotherWindow = false;
             }
             ImGui::End();
         }
@@ -270,7 +265,7 @@ int main(int, char**) {
             clear_color.z * clear_color.w,
             clear_color.w,
         };
-        color_attachments.view = wgpuSwapChainGetCurrentTextureView(wgpu_swap_chain);
+        color_attachments.view = wgpuSwapChainGetCurrentTextureView(swapChain);
 
         WGPURenderPassDescriptor render_pass_desc = {};
         render_pass_desc.colorAttachmentCount = 1;
@@ -290,7 +285,7 @@ int main(int, char**) {
         wgpuQueueSubmit(queue, 1, &cmd_buffer);
 
 #ifndef __EMSCRIPTEN__
-        wgpuSwapChainPresent(wgpu_swap_chain);
+        wgpuSwapChainPresent(swapChain);
 #endif
 
         wgpuTextureViewRelease(color_attachments.view);
@@ -319,9 +314,9 @@ int main(int, char**) {
 }
 
 #ifndef __EMSCRIPTEN__
-static WGPUAdapter RequestAdapter(WGPUInstance instance) {
-    auto onAdapterRequestEnded = [](WGPURequestAdapterStatus status, WGPUAdapter adapter,
-                                    const char* message, void* pUserData) {
+static WGPUAdapter RequestAdapter(wgpu::Instance& instance) {
+    auto onAdapterRequestEnded = [](auto status, WGPUAdapter adapter, const char* message,
+                                    void* pUserData) {
         if (status == WGPURequestAdapterStatus_Success) {
             *(WGPUAdapter*)(pUserData) = adapter;
         } else {
@@ -329,7 +324,7 @@ static WGPUAdapter RequestAdapter(WGPUInstance instance) {
         }
     };
     WGPUAdapter adapter;
-    wgpuInstanceRequestAdapter(instance, nullptr, onAdapterRequestEnded, (void*)&adapter);
+    instance.RequestAdapter(nullptr, onAdapterRequestEnded, (void*)&adapter);
     return adapter;
 }
 
@@ -348,8 +343,8 @@ static WGPUDevice RequestDevice(WGPUAdapter& adapter) {
 }
 #endif
 
-static bool InitWGPU(GLFWwindow* window) {
-    wgpu::Instance instance = wgpuCreateInstance(nullptr);
+static bool initWGPU(GLFWwindow* window) {
+    wgpu::Instance instance = wgpu::CreateInstance(nullptr);
 
 #ifdef __EMSCRIPTEN__
     wgpu_device = emscripten_webgpu_get_device();
@@ -357,7 +352,7 @@ static bool InitWGPU(GLFWwindow* window) {
         return false;
     }
 #else
-    WGPUAdapter adapter = RequestAdapter(instance.Get());
+    WGPUAdapter adapter = RequestAdapter(instance);
     if (!adapter) {
         return false;
     }
@@ -389,17 +384,19 @@ static bool InitWGPU(GLFWwindow* window) {
     return true;
 }
 
-static void CreateSwapChain(int width, int height) {
-    if (wgpu_swap_chain) {
-        wgpuSwapChainRelease(wgpu_swap_chain);
+static void createSwapChain(int width, int height) {
+    if (swapChain) {
+        wgpuSwapChainRelease(swapChain);
     }
     swapChainWidth = width;
     swapChainHeight = height;
-    WGPUSwapChainDescriptor swap_chain_desc = {};
-    swap_chain_desc.usage = WGPUTextureUsage_RenderAttachment;
-    swap_chain_desc.format = wgpu_preferred_fmt;
-    swap_chain_desc.width = width;
-    swap_chain_desc.height = height;
-    swap_chain_desc.presentMode = WGPUPresentMode_Fifo;
-    wgpu_swap_chain = wgpuDeviceCreateSwapChain(wgpu_device, wgpu_surface, &swap_chain_desc);
+
+    auto descriptor = WGPUSwapChainDescriptor{};
+    descriptor.usage = WGPUTextureUsage_RenderAttachment;
+    descriptor.format = wgpu_preferred_fmt;
+    descriptor.width = width;
+    descriptor.height = height;
+    descriptor.presentMode = WGPUPresentMode_Fifo;
+
+    swapChain = wgpuDeviceCreateSwapChain(wgpu_device, wgpu_surface, &descriptor);
 }

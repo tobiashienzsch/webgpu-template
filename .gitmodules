@@ -8,3 +8,6 @@
 [submodule "3rd_party/miniaudio"]
 	path = 3rd_party/miniaudio
 	url = https://github.com/mackron/miniaudio
+[submodule "3rd_party/clap"]
+	path = 3rd_party/clap
+	url = https://github.com/free-audio/clap

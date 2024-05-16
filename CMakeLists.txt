@@ -43,7 +43,8 @@ else()
     set(LIBRARIES webgpu_dawn webgpu_cpp webgpu_glfw glfw)
 endif()
 
-add_subdirectory(lib/miniaudio)
+add_subdirectory(3rd_party/clap EXCLUDE_FROM_ALL)
+add_subdirectory(lib/miniaudio EXCLUDE_FROM_ALL)
 
 add_executable(example
     src/main.cpp
@@ -64,7 +65,7 @@ target_include_directories(example
         3rd_party/imgui/backends
 )
 
-target_link_libraries(example PUBLIC ${LIBRARIES} miniaudio)
+target_link_libraries(example PUBLIC ${LIBRARIES} clap miniaudio)
 
 if(EMSCRIPTEN)
     target_link_options(example
