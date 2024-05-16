@@ -1,0 +1,7 @@
+[submodule "3rd_party/imgui"]
+	path = 3rd_party/imgui
+	url = https://github.com/ocornut/imgui
+	branch = docking
+[submodule "3rd_party/dawn"]
+	path = 3rd_party/dawn
+	url = https://dawn.googlesource.com/dawn
