@@ -12,6 +12,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_wgpu.h"
 
+#include <cassert>
+#include <cstdio>
+#include <stdexcept>
+
 #ifdef __EMSCRIPTEN__
 #include <functional>
 static std::function<void()> MainLoopForEmscriptenP;
