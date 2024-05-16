@@ -55,6 +55,7 @@ add_executable(example
     src/main.cpp
 
     src/AudioDevice.cpp
+    src/Window.cpp
 
     3rd_party/imgui/backends/imgui_impl_glfw.cpp
     3rd_party/imgui/backends/imgui_impl_wgpu.cpp
