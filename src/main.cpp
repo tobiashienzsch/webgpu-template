@@ -1,8 +1,4 @@
-#include "miniaudio.h"
-
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_wgpu.h"
+#include "AudioDevice.hpp"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -17,6 +13,10 @@
 #include <webgpu/webgpu_cpp.h>
 
 #include <clap/clap.h>
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_wgpu.h"
 
 // This example can also compile and run with Emscripten! See 'Makefile.emscripten' for details.
 #ifdef __EMSCRIPTEN__
@@ -34,10 +34,50 @@ static void MainLoopForEmscripten() {
 #define EMSCRIPTEN_MAINLOOP_END
 #endif
 
-#include <stdio.h>
+#include <cstdio>
 
 static bool initWGPU(GLFWwindow* window);
 static void createSwapChain(int width, int height);
+
+struct Window {
+    Window() {
+        glfwSetErrorCallback([](int error, const char* description) {
+            printf("GLFW Error %d: %s\n", error, description);
+        });
+
+        if (not glfwInit()) {
+            throw std::runtime_error{"glfw init failed"};
+        }
+
+        // Make sure GLFW does not initialize any graphics context.
+        // This needs to be done explicitly later.
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        auto const* title = "Dear ImGui GLFW+WebGPU example";
+        _window = glfwCreateWindow(_width, _height, title, nullptr, nullptr);
+        if (_window == nullptr) {
+            throw std::runtime_error{"window init failed"};
+        }
+    }
+
+    ~Window() {
+        if (_window != nullptr) {
+            glfwDestroyWindow(_window);
+        }
+        glfwTerminate();
+    }
+
+    Window(Window const& other) = delete;
+    Window(Window&& other) = delete;
+
+    auto operator=(Window const& other) -> Window& = delete;
+    auto operator=(Window&& other) -> Window& = delete;
+
+  private:
+    int _width = 1280;
+    int _height = 720;
+    GLFWwindow* _window{nullptr};
+    wgpu::SwapChain _swapChain;
+};
 
 static void glfwErrorCallback(int error, const char* description) {
     printf("GLFW Error %d: %s\n", error, description);
@@ -64,10 +104,6 @@ static void wgpuErrorCallback(WGPUErrorType error_type, const char* message, voi
     printf("%s error: %s\n", error_type_lbl, message);
 }
 
-static constexpr auto audioDeviceFormat = ma_format_f32;
-static constexpr auto audioDeviceChannels = 2;
-static constexpr auto audioDeviceSamplerate = 48000;
-
 // Global WebGPU required states
 static auto gpuInstance = WGPUInstance{nullptr};
 static auto gpuDevice = WGPUDevice{nullptr};
@@ -77,24 +113,9 @@ static auto swapChain = WGPUSwapChain{nullptr};
 static auto swapChainWidth = 1280;
 static auto swapChainHeight = 720;
 
-static void audioCallback(ma_device* device,
-                          void* output,
-                          const void* /*input*/,
-                          ma_uint32 frameCount) {
-    assert(device->playback.channels == audioDeviceChannels);
-
-    auto* sineWave = static_cast<ma_waveform*>(device->pUserData);
-    assert(sineWave != nullptr);
-
-    ma_waveform_read_pcm_frames(sineWave, output, frameCount, nullptr);
-}
-
 // Main code
 int main(int, char**) {
-    ma_waveform sineWave;
-    ma_device_config deviceConfig;
-    ma_device audioDevice;
-    ma_waveform_config sineWaveConfig;
+    auto audioDevice = tobi::AudioDevice{};
 
     glfwSetErrorCallback(glfwErrorCallback);
     if (not glfwInit()) {
@@ -150,7 +171,6 @@ int main(int, char**) {
     bool showAnotherWindow = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     float f = 0.0f;
-    bool audioIsEnabled = false;
 
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a
     // fopen() of the imgui.ini file. You may manually call LoadIniSettingsFromMemory() to load
@@ -194,39 +214,14 @@ int main(int, char**) {
             ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
             ImGui::ColorEdit3("clear color", (float*)&clear_color);
 
-            // Buttons return true when clicked (most widgets return true when edited/activated)
+            // AUDIO
             if (ImGui::Button("Enable Audio")) {
-                if (not audioIsEnabled) {
-                    audioIsEnabled = true;
-
-                    deviceConfig = ma_device_config_init(ma_device_type_playback);
-                    deviceConfig.playback.format = audioDeviceFormat;
-                    deviceConfig.playback.channels = audioDeviceChannels;
-                    deviceConfig.sampleRate = audioDeviceSamplerate;
-                    deviceConfig.dataCallback = audioCallback;
-                    deviceConfig.pUserData = &sineWave;
-
-                    if (ma_device_init(nullptr, &deviceConfig, &audioDevice) != MA_SUCCESS) {
-                        printf("Failed to open playback device.\n");
-                    }
-
-                    printf("Device Name: %s\n", audioDevice.playback.name);
-
-                    sineWaveConfig = ma_waveform_config_init(
-                        audioDevice.playback.format, audioDevice.playback.channels,
-                        audioDevice.sampleRate, ma_waveform_type_sine, 0.2, 220);
-                    ma_waveform_init(&sineWaveConfig, &sineWave);
-
-                    if (ma_device_start(&audioDevice) != MA_SUCCESS) {
-                        printf("Failed to start playback device.\n");
-                        ma_device_uninit(&audioDevice);
-                    }
-                }
+                audioDevice.initialized();
             }
-
             ImGui::SameLine();
-            ImGui::Text("Audio = %s", audioIsEnabled ? "true" : "false");
+            ImGui::Text("Audio = %s", audioDevice.isInitialized() ? "true" : "false");
 
+            // FPS
             ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
         }
@@ -297,13 +292,6 @@ int main(int, char**) {
 
     glfwDestroyWindow(window);
     glfwTerminate();
-
-    /* Uninitialize the waveform after the device so we don't pull it from under the device while
-     * it's being reference in the data callback. */
-    if (audioIsEnabled) {
-        ma_device_uninit(&audioDevice);
-        ma_waveform_uninit(&sineWave);
-    }
 
     return 0;
 }
