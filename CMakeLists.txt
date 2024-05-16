@@ -35,8 +35,6 @@ else()
     endif()
 
     if(WIN32)
-        option(DAWN_ENABLE_D3D11 "Enable D3D11" OFF)
-        option(DAWN_ENABLE_D3D12 "Enable D3D12" OFF)
         option(TINT_BUILD_SPV_READER "Build the SPIR-V input reader" OFF)
         option(TINT_BUILD_WGSL_READER "Build the WGSL input reader" ON)
         option(TINT_BUILD_GLSL_WRITER "Build the GLSL output writer" OFF)
