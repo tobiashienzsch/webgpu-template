@@ -1,40 +1,27 @@
-# Building for desktop (WebGPU-native) with Dawn:
-#  1. git clone https://github.com/google/dawn dawn
-#  2. cmake -B build -DIMGUI_DAWN_DIR=dawn
-#  3. cmake --build build
-# The resulting binary will be found at one of the following locations:
-#   * build/Debug/example_glfw_wgpu[.exe]
-#   * build/example_glfw_wgpu[.exe]
-
-# Building for Emscripten:
-#  1. Install Emscripten SDK following the instructions: https://emscripten.org/docs/getting_started/downloads.html
-#  2. Install Ninja build system
-#  3. emcmake cmake -G Ninja -B build
-#  3. cmake --build build
-#  4. emrun build/index.html
-
 cmake_minimum_required(VERSION 3.24)
 project(webgpu-template C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+find_program(CCACHE ccache)
+if(CCACHE)
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+endif()
 
-set(IMGUI_DIR 3rd_party/imgui)
-set(IMGUI_DAWN_DIR 3rd_party/dawn)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 if(EMSCRIPTEN)
     set(LIBRARIES glfw)
     add_compile_options(-sDISABLE_EXCEPTION_CATCHING=1 -DIMGUI_DISABLE_FILE_FUNCTIONS=1)
 else()
-    # Dawn wgpu desktop
-    set(DAWN_FETCH_DEPENDENCIES ON)
-    set(IMGUI_DAWN_DIR CACHE PATH "Path to Dawn repository")
-    if (NOT IMGUI_DAWN_DIR)
-        message(FATAL_ERROR "Please specify the Dawn repository by setting IMGUI_DAWN_DIR")
-    endif()
-
     option(DAWN_FETCH_DEPENDENCIES "Use fetch_dawn_dependencies.py as an alternative to using depot_tools" ON)
-
-    # Dawn builds many things by default - disable things we don't need
     option(DAWN_BUILD_SAMPLES "Enables building Dawn's samples" OFF)
     option(TINT_BUILD_CMD_TOOLS "Build the Tint command line tools" OFF)
     option(TINT_BUILD_DOCS "Build documentation" OFF)
@@ -51,34 +38,36 @@ else()
         option(TINT_BUILD_WGSL_WRITER "Build the WGSL output writer" ON)
     endif()
 
-    add_subdirectory("${IMGUI_DAWN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/dawn" EXCLUDE_FROM_ALL)
+    add_subdirectory(3rd_party/dawn "${CMAKE_CURRENT_BINARY_DIR}/dawn" EXCLUDE_FROM_ALL)
 
     set(LIBRARIES webgpu_dawn webgpu_cpp webgpu_glfw glfw)
 endif()
 
-add_executable(example_glfw_wgpu
+add_subdirectory(lib/miniaudio)
+
+add_executable(example
     src/main.cpp
 
-    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_wgpu.cpp
+    3rd_party/imgui/backends/imgui_impl_glfw.cpp
+    3rd_party/imgui/backends/imgui_impl_wgpu.cpp
 
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
+    3rd_party/imgui/imgui.cpp
+    3rd_party/imgui/imgui_draw.cpp
+    3rd_party/imgui/imgui_demo.cpp
+    3rd_party/imgui/imgui_tables.cpp
+    3rd_party/imgui/imgui_widgets.cpp
 )
 
-target_include_directories(example_glfw_wgpu
+target_include_directories(example
     PRIVATE
-        ${IMGUI_DIR}
-        ${IMGUI_DIR}/backends
+        3rd_party/imgui
+        3rd_party/imgui/backends
 )
 
-target_link_libraries(example_glfw_wgpu PUBLIC ${LIBRARIES})
+target_link_libraries(example PUBLIC ${LIBRARIES} miniaudio)
 
 if(EMSCRIPTEN)
-    target_link_options(example_glfw_wgpu
+    target_link_options(example
         PRIVATE
             "-sUSE_WEBGPU=1"
             "-sUSE_GLFW=3"
@@ -90,10 +79,10 @@ if(EMSCRIPTEN)
             "-sNO_FILESYSTEM=1"
     )
 
-    set_target_properties(example_glfw_wgpu PROPERTIES OUTPUT_NAME "index")
+    set_target_properties(example PROPERTIES OUTPUT_NAME "index")
 
-    add_custom_command(TARGET example_glfw_wgpu POST_BUILD
+    add_custom_command(TARGET example POST_BUILD
         COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_LIST_DIR}/web/index.html" $<TARGET_FILE_DIR:example_glfw_wgpu>
+            ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_LIST_DIR}/web/index.html" $<TARGET_FILE_DIR:example>
     )
 endif()

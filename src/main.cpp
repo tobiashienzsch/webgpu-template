@@ -1,3 +1,4 @@
+#include "miniaudio.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -71,8 +72,33 @@ static void wgpu_error_callback(WGPUErrorType error_type, const char* message, v
     printf("%s error: %s\n", error_type_lbl, message);
 }
 
+#define DEVICE_FORMAT ma_format_f32
+#define DEVICE_CHANNELS 2
+#define DEVICE_SAMPLE_RATE 48000
+
+static void data_callback(ma_device* pDevice,
+                          void* pOutput,
+                          const void* pInput,
+                          ma_uint32 frameCount) {
+    ma_waveform* pSineWave;
+
+    assert(pDevice->playback.channels == DEVICE_CHANNELS);
+
+    pSineWave = (ma_waveform*)pDevice->pUserData;
+    assert(pSineWave != NULL);
+
+    ma_waveform_read_pcm_frames(pSineWave, pOutput, frameCount, NULL);
+
+    (void)pInput; /* Unused. */
+}
+
 // Main code
 int main(int, char**) {
+    ma_waveform sineWave;
+    ma_device_config deviceConfig;
+    ma_device device;
+    ma_waveform_config sineWaveConfig;
+
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
         return 1;
@@ -166,7 +192,7 @@ int main(int, char**) {
         // named window.
         {
             static float f = 0.0f;
-            static int counter = 0;
+            static bool audioIsEnabled = false;
 
             // Create a window called "Hello, world!" and append into it.
             ImGui::Begin("Hello, world!");
@@ -178,11 +204,37 @@ int main(int, char**) {
             ImGui::ColorEdit3("clear color", (float*)&clear_color);
 
             // Buttons return true when clicked (most widgets return true when edited/activated)
-            if (ImGui::Button("Button")) {
-                counter++;
+            if (ImGui::Button("Enable Audio")) {
+                if (not audioIsEnabled) {
+                    audioIsEnabled = true;
+
+                    deviceConfig = ma_device_config_init(ma_device_type_playback);
+                    deviceConfig.playback.format = DEVICE_FORMAT;
+                    deviceConfig.playback.channels = DEVICE_CHANNELS;
+                    deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
+                    deviceConfig.dataCallback = data_callback;
+                    deviceConfig.pUserData = &sineWave;
+
+                    if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
+                        printf("Failed to open playback device.\n");
+                    }
+
+                    printf("Device Name: %s\n", device.playback.name);
+
+                    sineWaveConfig =
+                        ma_waveform_config_init(device.playback.format, device.playback.channels,
+                                                device.sampleRate, ma_waveform_type_sine, 0.2, 220);
+                    ma_waveform_init(&sineWaveConfig, &sineWave);
+
+                    if (ma_device_start(&device) != MA_SUCCESS) {
+                        printf("Failed to start playback device.\n");
+                        ma_device_uninit(&device);
+                    }
+                }
             }
+
             ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
+            ImGui::Text("Audio = %s", audioIsEnabled ? "true" : "false");
 
             ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
@@ -257,6 +309,11 @@ int main(int, char**) {
 
     glfwDestroyWindow(window);
     glfwTerminate();
+
+    /* Uninitialize the waveform after the device so we don't pull it from under the device while
+     * it's being reference in the data callback. */
+    ma_device_uninit(&device);
+    ma_waveform_uninit(&sineWave);
 
     return 0;
 }
