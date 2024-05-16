@@ -1,5 +1,5 @@
-#include "AudioDevice.hpp"
-#include "Window.hpp"
+#include <tobi/AudioDevice.hpp>
+#include <tobi/Window.hpp>
 
 #include <cstdlib>
 

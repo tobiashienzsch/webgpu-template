@@ -54,8 +54,8 @@ add_subdirectory(lib/miniaudio EXCLUDE_FROM_ALL)
 add_executable(example
     src/main.cpp
 
-    src/AudioDevice.cpp
-    src/Window.cpp
+    src/tobi/AudioDevice.cpp
+    src/tobi/Window.cpp
 
     3rd_party/imgui/backends/imgui_impl_glfw.cpp
     3rd_party/imgui/backends/imgui_impl_wgpu.cpp
@@ -69,6 +69,7 @@ add_executable(example
 
 target_include_directories(example
     PRIVATE
+        src
         3rd_party/imgui
         3rd_party/imgui/backends
 )
