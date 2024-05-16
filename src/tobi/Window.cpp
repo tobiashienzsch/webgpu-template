@@ -16,21 +16,6 @@
 #include <cstdio>
 #include <stdexcept>
 
-#ifdef __EMSCRIPTEN__
-#include <functional>
-static std::function<void()> MainLoopForEmscriptenP;
-static void MainLoopForEmscripten() {
-    MainLoopForEmscriptenP();
-}
-#define EMSCRIPTEN_MAINLOOP_BEGIN MainLoopForEmscriptenP = [&]()
-#define EMSCRIPTEN_MAINLOOP_END \
-    ;                           \
-    emscripten_set_main_loop(MainLoopForEmscripten, 0, true)
-#else
-#define EMSCRIPTEN_MAINLOOP_BEGIN
-#define EMSCRIPTEN_MAINLOOP_END
-#endif
-
 namespace tobi {
 
 namespace {
@@ -156,15 +141,12 @@ auto Window::show() -> void {
     io.IniFilename = nullptr;
 
 #ifdef __EMSCRIPTEN__
-    EMSCRIPTEN_MAINLOOP_BEGIN
+    emscripten_set_main_loop_arg([](auto* ptr) -> void { static_cast<Window*>(ptr)->loop(); }, this,
+                                 0, true);
 #else
-    while (!glfwWindowShouldClose(_window))
-#endif
-    {
+    while (not glfwWindowShouldClose(_window)) {
         loop();
     }
-#ifdef __EMSCRIPTEN__
-    EMSCRIPTEN_MAINLOOP_END;
 #endif
 }
 
