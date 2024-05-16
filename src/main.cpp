@@ -36,24 +36,14 @@ static void MainLoopForEmscripten() {
 
 #include <stdio.h>
 
-// Global WebGPU required states
-static auto wgpu_instance = WGPUInstance{nullptr};
-static auto wgpu_device = WGPUDevice{nullptr};
-static auto wgpu_surface = WGPUSurface{nullptr};
-static auto wgpu_preferred_fmt = WGPUTextureFormat{WGPUTextureFormat_RGBA8Unorm};
-static auto swapChain = WGPUSwapChain{nullptr};
-static int swapChainWidth = 1280;
-static int swapChainHeight = 720;
-
-// Forward declarations
 static bool initWGPU(GLFWwindow* window);
 static void createSwapChain(int width, int height);
 
-static void glfw_error_callback(int error, const char* description) {
+static void glfwErrorCallback(int error, const char* description) {
     printf("GLFW Error %d: %s\n", error, description);
 }
 
-static void wgpu_error_callback(WGPUErrorType error_type, const char* message, void*) {
+static void wgpuErrorCallback(WGPUErrorType error_type, const char* message, void*) {
     const char* error_type_lbl = "";
     switch (error_type) {
         case WGPUErrorType_Validation:
@@ -74,24 +64,29 @@ static void wgpu_error_callback(WGPUErrorType error_type, const char* message, v
     printf("%s error: %s\n", error_type_lbl, message);
 }
 
-#define DEVICE_FORMAT ma_format_f32
-#define DEVICE_CHANNELS 2
-#define DEVICE_SAMPLE_RATE 48000
+static constexpr auto audioDeviceFormat = ma_format_f32;
+static constexpr auto audioDeviceChannels = 2;
+static constexpr auto audioDeviceSamplerate = 48000;
 
-static void data_callback(ma_device* pDevice,
-                          void* pOutput,
-                          const void* pInput,
+// Global WebGPU required states
+static auto gpuInstance = WGPUInstance{nullptr};
+static auto gpuDevice = WGPUDevice{nullptr};
+static auto gpuSurface = WGPUSurface{nullptr};
+static auto gpuPreferredFormat = WGPUTextureFormat{WGPUTextureFormat_RGBA8Unorm};
+static auto swapChain = WGPUSwapChain{nullptr};
+static auto swapChainWidth = 1280;
+static auto swapChainHeight = 720;
+
+static void audioCallback(ma_device* device,
+                          void* output,
+                          const void* /*input*/,
                           ma_uint32 frameCount) {
-    ma_waveform* pSineWave;
+    assert(device->playback.channels == audioDeviceChannels);
 
-    assert(pDevice->playback.channels == DEVICE_CHANNELS);
+    auto* sineWave = static_cast<ma_waveform*>(device->pUserData);
+    assert(sineWave != nullptr);
 
-    pSineWave = (ma_waveform*)pDevice->pUserData;
-    assert(pSineWave != NULL);
-
-    ma_waveform_read_pcm_frames(pSineWave, pOutput, frameCount, NULL);
-
-    (void)pInput; /* Unused. */
+    ma_waveform_read_pcm_frames(sineWave, output, frameCount, nullptr);
 }
 
 // Main code
@@ -101,27 +96,27 @@ int main(int, char**) {
     ma_device device;
     ma_waveform_config sineWaveConfig;
 
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit()) {
-        return 1;
+    glfwSetErrorCallback(glfwErrorCallback);
+    if (not glfwInit()) {
+        return EXIT_FAILURE;
     }
 
     // Make sure GLFW does not initialize any graphics context.
     // This needs to be done explicitly later.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(swapChainWidth, swapChainHeight,
-                                          "Dear ImGui GLFW+WebGPU example", nullptr, nullptr);
+    auto const* windowTitle = "Dear ImGui GLFW+WebGPU example";
+    auto* window = glfwCreateWindow(swapChainWidth, swapChainHeight, windowTitle, nullptr, nullptr);
     if (window == nullptr) {
-        return 1;
+        return EXIT_FAILURE;
     }
 
     // Initialize the WebGPU environment
-    if (!initWGPU(window)) {
+    if (not initWGPU(window)) {
         if (window) {
             glfwDestroyWindow(window);
         }
         glfwTerminate();
-        return 1;
+        return EXIT_FAILURE;
     }
     createSwapChain(swapChainWidth, swapChainHeight);
     glfwShowWindow(window);
@@ -137,7 +132,6 @@ int main(int, char**) {
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOther(window, true);
@@ -145,9 +139,9 @@ int main(int, char**) {
     ImGui_ImplGlfw_InstallEmscriptenCanvasResizeCallback("#canvas");
 #endif
     ImGui_ImplWGPU_InitInfo init_info;
-    init_info.Device = wgpu_device;
+    init_info.Device = gpuDevice;
     init_info.NumFramesInFlight = 3;
-    init_info.RenderTargetFormat = wgpu_preferred_fmt;
+    init_info.RenderTargetFormat = gpuPreferredFormat;
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
     ImGui_ImplWGPU_Init(&init_info);
 
@@ -207,13 +201,13 @@ int main(int, char**) {
                     audioIsEnabled = true;
 
                     deviceConfig = ma_device_config_init(ma_device_type_playback);
-                    deviceConfig.playback.format = DEVICE_FORMAT;
-                    deviceConfig.playback.channels = DEVICE_CHANNELS;
-                    deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
-                    deviceConfig.dataCallback = data_callback;
+                    deviceConfig.playback.format = audioDeviceFormat;
+                    deviceConfig.playback.channels = audioDeviceChannels;
+                    deviceConfig.sampleRate = audioDeviceSamplerate;
+                    deviceConfig.dataCallback = audioCallback;
                     deviceConfig.pUserData = &sineWave;
 
-                    if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
+                    if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
                         printf("Failed to open playback device.\n");
                     }
 
@@ -252,10 +246,10 @@ int main(int, char**) {
 
 #ifndef __EMSCRIPTEN__
         // Tick needs to be called in Dawn to display validation errors
-        wgpuDeviceTick(wgpu_device);
+        wgpuDeviceTick(gpuDevice);
 #endif
 
-        WGPURenderPassColorAttachment color_attachments = {};
+        auto color_attachments = WGPURenderPassColorAttachment{};
         color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
         color_attachments.loadOp = WGPULoadOp_Clear;
         color_attachments.storeOp = WGPUStoreOp_Store;
@@ -267,21 +261,21 @@ int main(int, char**) {
         };
         color_attachments.view = wgpuSwapChainGetCurrentTextureView(swapChain);
 
-        WGPURenderPassDescriptor render_pass_desc = {};
-        render_pass_desc.colorAttachmentCount = 1;
-        render_pass_desc.colorAttachments = &color_attachments;
-        render_pass_desc.depthStencilAttachment = nullptr;
+        auto renderPassDesc = WGPURenderPassDescriptor{};
+        renderPassDesc.colorAttachmentCount = 1;
+        renderPassDesc.colorAttachments = &color_attachments;
+        renderPassDesc.depthStencilAttachment = nullptr;
 
-        WGPUCommandEncoderDescriptor enc_desc = {};
-        WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(wgpu_device, &enc_desc);
+        auto enc_desc = WGPUCommandEncoderDescriptor{};
+        auto encoder = wgpuDeviceCreateCommandEncoder(gpuDevice, &enc_desc);
 
-        WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(encoder, &render_pass_desc);
+        auto pass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPassDesc);
         ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), pass);
         wgpuRenderPassEncoderEnd(pass);
 
-        WGPUCommandBufferDescriptor cmd_buffer_desc = {};
-        WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, &cmd_buffer_desc);
-        WGPUQueue queue = wgpuDeviceGetQueue(wgpu_device);
+        auto cmd_buffer_desc = WGPUCommandBufferDescriptor{};
+        auto cmd_buffer = wgpuCommandEncoderFinish(encoder, &cmd_buffer_desc);
+        auto queue = wgpuDeviceGetQueue(gpuDevice);
         wgpuQueueSubmit(queue, 1, &cmd_buffer);
 
 #ifndef __EMSCRIPTEN__
@@ -347,8 +341,8 @@ static bool initWGPU(GLFWwindow* window) {
     wgpu::Instance instance = wgpu::CreateInstance(nullptr);
 
 #ifdef __EMSCRIPTEN__
-    wgpu_device = emscripten_webgpu_get_device();
-    if (!wgpu_device) {
+    gpuDevice = emscripten_webgpu_get_device();
+    if (!gpuDevice) {
         return false;
     }
 #else
@@ -356,7 +350,7 @@ static bool initWGPU(GLFWwindow* window) {
     if (!adapter) {
         return false;
     }
-    wgpu_device = RequestDevice(adapter);
+    gpuDevice = RequestDevice(adapter);
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -367,19 +361,19 @@ static bool initWGPU(GLFWwindow* window) {
     wgpu::Surface surface = instance.CreateSurface(&surface_desc);
 
     wgpu::Adapter adapter = {};
-    wgpu_preferred_fmt = (WGPUTextureFormat)surface.GetPreferredFormat(adapter);
+    gpuPreferredFormat = (WGPUTextureFormat)surface.GetPreferredFormat(adapter);
 #else
     wgpu::Surface surface = wgpu::glfw::CreateSurfaceForWindow(instance, window);
     if (!surface) {
         return false;
     }
-    wgpu_preferred_fmt = WGPUTextureFormat_BGRA8Unorm;
+    gpuPreferredFormat = WGPUTextureFormat_BGRA8Unorm;
 #endif
 
-    wgpu_instance = instance.MoveToCHandle();
-    wgpu_surface = surface.MoveToCHandle();
+    gpuInstance = instance.MoveToCHandle();
+    gpuSurface = surface.MoveToCHandle();
 
-    wgpuDeviceSetUncapturedErrorCallback(wgpu_device, wgpu_error_callback, nullptr);
+    wgpuDeviceSetUncapturedErrorCallback(gpuDevice, wgpuErrorCallback, nullptr);
 
     return true;
 }
@@ -393,10 +387,10 @@ static void createSwapChain(int width, int height) {
 
     auto descriptor = WGPUSwapChainDescriptor{};
     descriptor.usage = WGPUTextureUsage_RenderAttachment;
-    descriptor.format = wgpu_preferred_fmt;
+    descriptor.format = gpuPreferredFormat;
     descriptor.width = width;
     descriptor.height = height;
     descriptor.presentMode = WGPUPresentMode_Fifo;
 
-    swapChain = wgpuDeviceCreateSwapChain(wgpu_device, wgpu_surface, &descriptor);
+    swapChain = wgpuDeviceCreateSwapChain(gpuDevice, gpuSurface, &descriptor);
 }
