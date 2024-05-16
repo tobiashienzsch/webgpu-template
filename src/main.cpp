@@ -93,7 +93,7 @@ static void audioCallback(ma_device* device,
 int main(int, char**) {
     ma_waveform sineWave;
     ma_device_config deviceConfig;
-    ma_device device;
+    ma_device audioDevice;
     ma_waveform_config sineWaveConfig;
 
     glfwSetErrorCallback(glfwErrorCallback);
@@ -149,6 +149,8 @@ int main(int, char**) {
     bool showDemoWindow = true;
     bool showAnotherWindow = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    float f = 0.0f;
+    bool audioIsEnabled = false;
 
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a
     // fopen() of the imgui.ini file. You may manually call LoadIniSettingsFromMemory() to load
@@ -166,8 +168,8 @@ int main(int, char**) {
 
         // React to changes in screen size
         int width, height;
-        glfwGetFramebufferSize((GLFWwindow*)window, &width, &height);
-        if (width != swapChainWidth || height != swapChainHeight) {
+        glfwGetFramebufferSize(window, &width, &height);
+        if (width != swapChainWidth or height != swapChainHeight) {
             ImGui_ImplWGPU_InvalidateDeviceObjects();
             createSwapChain(width, height);
             ImGui_ImplWGPU_CreateDeviceObjects();
@@ -183,9 +185,6 @@ int main(int, char**) {
         }
 
         {
-            static float f = 0.0f;
-            static bool audioIsEnabled = false;
-
             // Create a window called "Hello, world!" and append into it.
             ImGui::Begin("Hello, world!");
 
@@ -207,20 +206,20 @@ int main(int, char**) {
                     deviceConfig.dataCallback = audioCallback;
                     deviceConfig.pUserData = &sineWave;
 
-                    if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
+                    if (ma_device_init(nullptr, &deviceConfig, &audioDevice) != MA_SUCCESS) {
                         printf("Failed to open playback device.\n");
                     }
 
-                    printf("Device Name: %s\n", device.playback.name);
+                    printf("Device Name: %s\n", audioDevice.playback.name);
 
-                    sineWaveConfig =
-                        ma_waveform_config_init(device.playback.format, device.playback.channels,
-                                                device.sampleRate, ma_waveform_type_sine, 0.2, 220);
+                    sineWaveConfig = ma_waveform_config_init(
+                        audioDevice.playback.format, audioDevice.playback.channels,
+                        audioDevice.sampleRate, ma_waveform_type_sine, 0.2, 220);
                     ma_waveform_init(&sineWaveConfig, &sineWave);
 
-                    if (ma_device_start(&device) != MA_SUCCESS) {
+                    if (ma_device_start(&audioDevice) != MA_SUCCESS) {
                         printf("Failed to start playback device.\n");
-                        ma_device_uninit(&device);
+                        ma_device_uninit(&audioDevice);
                     }
                 }
             }
@@ -301,8 +300,10 @@ int main(int, char**) {
 
     /* Uninitialize the waveform after the device so we don't pull it from under the device while
      * it's being reference in the data callback. */
-    ma_device_uninit(&device);
-    ma_waveform_uninit(&sineWave);
+    if (audioIsEnabled) {
+        ma_device_uninit(&audioDevice);
+        ma_waveform_uninit(&sineWave);
+    }
 
     return 0;
 }
