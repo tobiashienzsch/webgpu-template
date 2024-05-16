@@ -1,5 +1,8 @@
 # WebGPU Compute Template
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.txt)
+[![Build](https://github.com/tobiashienzsch/webgpu-template/actions/workflows/build.yml/badge.svg)](https://github.com/tobiashienzsch/webgpu-template/actions/workflows/build.yml)
+
 ## Building for Emscripten:
 
 1. Install Emscripten SDK following the instructions: https://emscripten.org/docs/getting_started/downloads.html
