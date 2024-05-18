@@ -17,4 +17,4 @@ target_include_directories(imgui
         "${CMAKE_SOURCE_DIR}/3rd_party/imgui/backends"
 )
 
-target_link_libraries(imgui PUBLIC ${LIBRARIES})
+target_link_libraries(imgui PUBLIC webgpu)
