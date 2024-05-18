@@ -50,27 +50,7 @@ endif()
 
 add_subdirectory(3rd_party/clap EXCLUDE_FROM_ALL)
 add_subdirectory(lib/miniaudio EXCLUDE_FROM_ALL)
-
-add_library(imgui)
-target_sources(imgui
-    PRIVATE
-        3rd_party/imgui/backends/imgui_impl_glfw.cpp
-        3rd_party/imgui/backends/imgui_impl_wgpu.cpp
-
-        3rd_party/imgui/imgui.cpp
-        3rd_party/imgui/imgui_draw.cpp
-        3rd_party/imgui/imgui_demo.cpp
-        3rd_party/imgui/imgui_tables.cpp
-        3rd_party/imgui/imgui_widgets.cpp
-)
-
-target_include_directories(imgui
-    PUBLIC
-        3rd_party/imgui
-        3rd_party/imgui/backends
-)
-
-target_link_libraries(imgui PUBLIC ${LIBRARIES})
+add_subdirectory(lib/imgui EXCLUDE_FROM_ALL)
 
 add_subdirectory(src)
 
