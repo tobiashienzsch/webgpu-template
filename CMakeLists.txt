@@ -51,72 +51,28 @@ endif()
 add_subdirectory(3rd_party/clap EXCLUDE_FROM_ALL)
 add_subdirectory(lib/miniaudio EXCLUDE_FROM_ALL)
 
-add_executable(example
-    src/main.cpp
+add_library(imgui)
+target_sources(imgui
+    PRIVATE
+        3rd_party/imgui/backends/imgui_impl_glfw.cpp
+        3rd_party/imgui/backends/imgui_impl_wgpu.cpp
 
-    src/tobi/AudioDevice.cpp
-    src/tobi/Window.cpp
-
-    3rd_party/imgui/backends/imgui_impl_glfw.cpp
-    3rd_party/imgui/backends/imgui_impl_wgpu.cpp
-
-    3rd_party/imgui/imgui.cpp
-    3rd_party/imgui/imgui_draw.cpp
-    3rd_party/imgui/imgui_demo.cpp
-    3rd_party/imgui/imgui_tables.cpp
-    3rd_party/imgui/imgui_widgets.cpp
+        3rd_party/imgui/imgui.cpp
+        3rd_party/imgui/imgui_draw.cpp
+        3rd_party/imgui/imgui_demo.cpp
+        3rd_party/imgui/imgui_tables.cpp
+        3rd_party/imgui/imgui_widgets.cpp
 )
 
-target_include_directories(example
-    PRIVATE
-        src
+target_include_directories(imgui
+    PUBLIC
         3rd_party/imgui
         3rd_party/imgui/backends
 )
 
-target_link_libraries(example PUBLIC ${LIBRARIES} clap miniaudio)
+target_link_libraries(imgui PUBLIC ${LIBRARIES})
 
-if(EMSCRIPTEN)
-    target_link_options(example
-        PRIVATE
-            "-sUSE_WEBGPU=1"
-            "-sUSE_GLFW=3"
-            "-sWASM=1"
-            "-sALLOW_MEMORY_GROWTH=1"
-            "-sNO_EXIT_RUNTIME=0"
-            "-sASSERTIONS=1"
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-            "-sNO_FILESYSTEM=1"
-    )
+add_subdirectory(src)
 
-    set_target_properties(example PROPERTIES OUTPUT_NAME "index")
-
-    add_custom_command(TARGET example POST_BUILD
-        COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_LIST_DIR}/web/index.html" $<TARGET_FILE_DIR:example>
-    )
-endif()
-
-# add_executable(example-compute src/compute.cpp)
-# target_include_directories(example-compute PRIVATE src)
-# target_link_libraries(example-compute PUBLIC ${LIBRARIES})
-
-# if(EMSCRIPTEN)
-#     target_link_options(example-compute
-#         PRIVATE
-#             "-sUSE_WEBGPU=1"
-#             "-sWASM=1"
-#             "-sALLOW_MEMORY_GROWTH=1"
-#             "-sNO_EXIT_RUNTIME=0"
-#             "-sASSERTIONS=1"
-#             "-sDISABLE_EXCEPTION_CATCHING=1"
-#             "-sNO_FILESYSTEM=1"
-#     )
-
-#     set_target_properties(example-compute PROPERTIES OUTPUT_NAME "index")
-
-#     add_custom_command(TARGET example-compute POST_BUILD
-#         COMMAND
-#             ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_LIST_DIR}/web/index.html" $<TARGET_FILE_DIR:example-compute>
-#     )
-# endif()
+add_subdirectory(example/compute)
+add_subdirectory(example/render)

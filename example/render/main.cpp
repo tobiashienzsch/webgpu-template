@@ -1,6 +1,8 @@
 #include <tobi/AudioDevice.hpp>
 #include <tobi/Window.hpp>
 
+#include <clap/clap.h>
+
 #include <cstdlib>
 
 int main(int, char**) {

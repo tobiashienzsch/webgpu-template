@@ -1,7 +1,5 @@
 #include "AudioDevice.hpp"
 
-#include <clap/clap.h>
-
 #include <cassert>
 #include <cstdio>
 #include <stdexcept>
