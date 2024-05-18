@@ -96,3 +96,27 @@ if(EMSCRIPTEN)
             ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_LIST_DIR}/web/index.html" $<TARGET_FILE_DIR:example>
     )
 endif()
+
+# add_executable(example-compute src/compute.cpp)
+# target_include_directories(example-compute PRIVATE src)
+# target_link_libraries(example-compute PUBLIC ${LIBRARIES})
+
+# if(EMSCRIPTEN)
+#     target_link_options(example-compute
+#         PRIVATE
+#             "-sUSE_WEBGPU=1"
+#             "-sWASM=1"
+#             "-sALLOW_MEMORY_GROWTH=1"
+#             "-sNO_EXIT_RUNTIME=0"
+#             "-sASSERTIONS=1"
+#             "-sDISABLE_EXCEPTION_CATCHING=1"
+#             "-sNO_FILESYSTEM=1"
+#     )
+
+#     set_target_properties(example-compute PROPERTIES OUTPUT_NAME "index")
+
+#     add_custom_command(TARGET example-compute POST_BUILD
+#         COMMAND
+#             ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_LIST_DIR}/web/index.html" $<TARGET_FILE_DIR:example-compute>
+#     )
+# endif()

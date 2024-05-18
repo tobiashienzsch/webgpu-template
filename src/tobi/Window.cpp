@@ -1,5 +1,7 @@
 #include "Window.hpp"
 
+#include <tobi/GPU.hpp>
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/html5.h>
@@ -14,63 +16,11 @@
 
 #include <cassert>
 #include <cstdio>
+#include <iostream>
 #include <stdexcept>
+#include <vector>
 
 namespace tobi {
-
-namespace {
-
-void wgpuErrorCallback(WGPUErrorType error_type, const char* message, void*) {
-    const char* error_type_lbl = "";
-    switch (error_type) {
-        case WGPUErrorType_Validation:
-            error_type_lbl = "Validation";
-            break;
-        case WGPUErrorType_OutOfMemory:
-            error_type_lbl = "Out of memory";
-            break;
-        case WGPUErrorType_Unknown:
-            error_type_lbl = "Unknown";
-            break;
-        case WGPUErrorType_DeviceLost:
-            error_type_lbl = "Device lost";
-            break;
-        default:
-            error_type_lbl = "Unknown";
-    }
-    printf("%s error: %s\n", error_type_lbl, message);
-}
-
-#ifndef __EMSCRIPTEN__
-wgpu::Adapter requestAdapter(wgpu::Instance& instance) {
-    auto callback = [](auto status, WGPUAdapter adapter, const char* message, void* pUserData) {
-        if (status == WGPURequestAdapterStatus_Success) {
-            *(wgpu::Adapter*)(pUserData) = wgpu::Adapter{adapter};
-        } else {
-            printf("Could not get WebGPU adapter: %s\n", message);
-        }
-    };
-    wgpu::Adapter adapter;
-    instance.RequestAdapter(nullptr, callback, (void*)&adapter);
-    return adapter;
-}
-
-wgpu::Device requestDevice(wgpu::Adapter& adapter) {
-    auto callback = [](WGPURequestDeviceStatus status, WGPUDevice device, const char* message,
-                       void* pUserData) {
-        if (status == WGPURequestDeviceStatus_Success) {
-            *(wgpu::Device*)(pUserData) = wgpu::Device{device};
-        } else {
-            printf("Could not get WebGPU device: %s\n", message);
-        }
-    };
-    wgpu::Device device;
-    adapter.RequestDevice(nullptr, callback, (void*)&device);
-    return device;
-}
-#endif
-
-}  // namespace
 
 Window::Window() {
     glfwSetErrorCallback([](int error, const char* description) {
@@ -141,8 +91,7 @@ auto Window::show() -> void {
     io.IniFilename = nullptr;
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop_arg([](auto* ptr) -> void { static_cast<Window*>(ptr)->loop(); }, this,
-                                 0, true);
+    emscripten_set_main_loop_arg([](auto* p) { static_cast<Window*>(p)->loop(); }, this, 0, true);
 #else
     while (not glfwWindowShouldClose(_window)) {
         loop();
@@ -218,8 +167,7 @@ auto Window::loop() -> void {
 #endif
 
     auto colorAttachment = wgpu::RenderPassColorAttachment{};
-
-    colorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+    colorAttachment.depthSlice = wgpu::kDepthSliceUndefined;
     colorAttachment.loadOp = wgpu::LoadOp::Clear;
     colorAttachment.storeOp = wgpu::StoreOp::Store;
     colorAttachment.clearValue = {
@@ -254,19 +202,7 @@ auto Window::loop() -> void {
 
 bool Window::initWebGPU() {
     wgpu::Instance instance = wgpu::CreateInstance(nullptr);
-
-#ifdef __EMSCRIPTEN__
-    _gpuDevice = wgpu::Device{emscripten_webgpu_get_device()};
-    if (!_gpuDevice) {
-        return false;
-    }
-#else
-    auto adapter = requestAdapter(instance);
-    if (!adapter) {
-        return false;
-    }
-    _gpuDevice = requestDevice(adapter);
-#endif
+    _gpuDevice = tobi::gpu::getDefaultDevice(instance);
 
 #ifdef __EMSCRIPTEN__
     wgpu::SurfaceDescriptorFromCanvasHTMLSelector html_surface_desc = {};
@@ -288,8 +224,10 @@ bool Window::initWebGPU() {
     _gpuInstance = instance;
     _gpuSurface = surface;
 
-    _gpuDevice.SetUncapturedErrorCallback(wgpuErrorCallback, nullptr);
+    _gpuDevice.SetUncapturedErrorCallback(tobi::gpu::errorCallback, nullptr);
 
+    // tobi::gpu::inspectAdapter(_gpuDevice.GetAdapter());
+    tobi::gpu::inspectDevice(_gpuDevice);
     return true;
 }
 
