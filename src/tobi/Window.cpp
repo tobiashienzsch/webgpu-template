@@ -2,6 +2,9 @@
 
 #include <tobi/GPU.hpp>
 
+#include <fmt/format.h>
+#include <fmt/os.h>
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/html5.h>
@@ -15,8 +18,6 @@
 #include "imgui_impl_wgpu.h"
 
 #include <cassert>
-#include <cstdio>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -24,7 +25,7 @@ namespace tobi {
 
 Window::Window() {
     glfwSetErrorCallback([](int error, const char* description) {
-        printf("GLFW Error %d: %s\n", error, description);
+        fmt::println("GLFW Error {}: {}\n", error, description);
     });
 
     if (not glfwInit()) {

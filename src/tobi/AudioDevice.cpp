@@ -1,7 +1,9 @@
 #include "AudioDevice.hpp"
 
+#include <fmt/format.h>
+#include <fmt/os.h>
+
 #include <cassert>
-#include <cstdio>
 #include <stdexcept>
 
 namespace tobi {
@@ -37,7 +39,7 @@ auto AudioDevice::initialized() -> void {
             throw std::runtime_error("Failed to open playback device");
         }
 
-        printf("Device Name: %s\n", _device.playback.name);
+        fmt::println("Device Name: {}", _device.playback.name);
 
         auto wave = ma_waveform_config_init(_device.playback.format, _device.playback.channels,
                                             _device.sampleRate, ma_waveform_type_sine, 0.2, 440.0);

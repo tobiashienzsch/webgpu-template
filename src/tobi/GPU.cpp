@@ -1,13 +1,13 @@
 #include "GPU.hpp"
 
+#include <fmt/format.h>
+#include <fmt/os.h>
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #include <emscripten/html5_webgpu.h>
 #endif
-
-#include <cstdio>
-#include <iostream>
 
 namespace tobi::gpu {
 
@@ -17,11 +17,11 @@ auto requesAdapter(wgpu::Instance& instance) -> wgpu::Adapter {
         if (status == WGPURequestAdapterStatus_Success) {
             *(wgpu::Adapter*)(pUserData) = wgpu::Adapter{adapter};
         } else {
-            printf("Could not get WebGPU adapter: %s\n", message);
+            fmt::println("Could not get WebGPU adapter: {}", message);
         }
     };
     wgpu::Adapter adapter;
-    instance.RequestAdapter(nullptr, callback, (void*)&adapter);
+    instance.RequestAdapter(nullptr, callback, static_cast<void*>(&adapter));
     return adapter;
 }
 
@@ -31,11 +31,11 @@ auto requestDevice(wgpu::Adapter& adapter) -> wgpu::Device {
         if (status == WGPURequestDeviceStatus_Success) {
             *(wgpu::Device*)(pUserData) = wgpu::Device{device};
         } else {
-            printf("Could not get WebGPU device: %s\n", message);
+            fmt::println("Could not get WebGPU device: {}", message);
         }
     };
     wgpu::Device device;
-    adapter.RequestDevice(nullptr, callback, (void*)&device);
+    adapter.RequestDevice(nullptr, callback, static_cast<void*>(&device));
     return device;
 }
 #endif
@@ -73,9 +73,9 @@ auto inspectAdapter(wgpu::Adapter const& adapter) -> void {
     features.resize(featureCount);
     adapter.EnumerateFeatures(features.data());
 
-    std::printf("Adapter features:\n");
+    fmt::println("Adapter features:");
     for (auto f : features) {
-        std::printf(" - %u\n", static_cast<uint32_t>(f));
+        fmt::println(" - {}", static_cast<uint32_t>(f));
     }
 
     wgpu::SupportedLimits limits = {};
@@ -83,48 +83,48 @@ auto inspectAdapter(wgpu::Adapter const& adapter) -> void {
     bool success = adapter.GetLimits(&limits);
     if (success) {
         // clang-format off
-		std::printf("Adapter limits:\n");
-		std::printf("maxTextureDimension1D: %u\n", limits.limits.maxTextureDimension1D);
-		std::printf("maxTextureDimension2D: %u\n", limits.limits.maxTextureDimension2D);
-		std::printf("maxTextureDimension3D: %u\n", limits.limits.maxTextureDimension3D);
-		std::printf("maxTextureArrayLayers: %u\n", limits.limits.maxTextureArrayLayers);
-		std::printf("maxBindGroups: %u\n", limits.limits.maxBindGroups);
-		std::printf("maxDynamicUniformBuffersPerPipelineLayout: %u\n", limits.limits.maxDynamicUniformBuffersPerPipelineLayout);
-		std::printf("maxDynamicStorageBuffersPerPipelineLayout: %u\n", limits.limits.maxDynamicStorageBuffersPerPipelineLayout);
-		std::printf("maxSampledTexturesPerShaderStage: %u\n", limits.limits.maxSampledTexturesPerShaderStage);
-		std::printf("maxSamplersPerShaderStage: %u\n", limits.limits.maxSamplersPerShaderStage);
-		std::printf("maxStorageBuffersPerShaderStage: %u\n", limits.limits.maxStorageBuffersPerShaderStage);
-		std::printf("maxStorageTexturesPerShaderStage: %u\n", limits.limits.maxStorageTexturesPerShaderStage);
-		std::printf("maxUniformBuffersPerShaderStage: %u\n", limits.limits.maxUniformBuffersPerShaderStage);
-		std::printf("maxUniformBufferBindingSize: %llu\n", limits.limits.maxUniformBufferBindingSize);
-		std::printf("maxStorageBufferBindingSize: %llu\n", limits.limits.maxStorageBufferBindingSize);
-		std::printf("minUniformBufferOffsetAlignment: %u\n", limits.limits.minUniformBufferOffsetAlignment);
-		std::printf("minStorageBufferOffsetAlignment: %u\n", limits.limits.minStorageBufferOffsetAlignment);
-		std::printf("maxVertexBuffers: %u\n", limits.limits.maxVertexBuffers);
-		std::printf("maxVertexAttributes: %u\n", limits.limits.maxVertexAttributes);
-		std::printf("maxVertexBufferArrayStride: %u\n", limits.limits.maxVertexBufferArrayStride);
-		std::printf("maxInterStageShaderComponents: %u\n", limits.limits.maxInterStageShaderComponents);
-		std::printf("maxComputeWorkgroupStorageSize: %u\n", limits.limits.maxComputeWorkgroupStorageSize);
-		std::printf("maxComputeInvocationsPerWorkgroup: %u\n", limits.limits.maxComputeInvocationsPerWorkgroup);
-		std::printf("maxComputeWorkgroupSizeX: %u\n", limits.limits.maxComputeWorkgroupSizeX);
-		std::printf("maxComputeWorkgroupSizeY: %u\n", limits.limits.maxComputeWorkgroupSizeY);
-		std::printf("maxComputeWorkgroupSizeZ: %u\n", limits.limits.maxComputeWorkgroupSizeZ);
-		std::printf("maxComputeWorkgroupsPerDimension: %u\n", limits.limits.maxComputeWorkgroupsPerDimension);
+		fmt::println("Adapter limits:");
+		fmt::println("maxTextureDimension1D: {}", limits.limits.maxTextureDimension1D);
+		fmt::println("maxTextureDimension2D: {}", limits.limits.maxTextureDimension2D);
+		fmt::println("maxTextureDimension3D: {}", limits.limits.maxTextureDimension3D);
+		fmt::println("maxTextureArrayLayers: {}", limits.limits.maxTextureArrayLayers);
+		fmt::println("maxBindGroups: {}", limits.limits.maxBindGroups);
+		fmt::println("maxDynamicUniformBuffersPerPipelineLayout: {}", limits.limits.maxDynamicUniformBuffersPerPipelineLayout);
+		fmt::println("maxDynamicStorageBuffersPerPipelineLayout: {}", limits.limits.maxDynamicStorageBuffersPerPipelineLayout);
+		fmt::println("maxSampledTexturesPerShaderStage: {}", limits.limits.maxSampledTexturesPerShaderStage);
+		fmt::println("maxSamplersPerShaderStage: {}", limits.limits.maxSamplersPerShaderStage);
+		fmt::println("maxStorageBuffersPerShaderStage: {}", limits.limits.maxStorageBuffersPerShaderStage);
+		fmt::println("maxStorageTexturesPerShaderStage: {}", limits.limits.maxStorageTexturesPerShaderStage);
+		fmt::println("maxUniformBuffersPerShaderStage: {}", limits.limits.maxUniformBuffersPerShaderStage);
+		fmt::println("maxUniformBufferBindingSize: {}", limits.limits.maxUniformBufferBindingSize);
+		fmt::println("maxStorageBufferBindingSize: {}", limits.limits.maxStorageBufferBindingSize);
+		fmt::println("minUniformBufferOffsetAlignment: {}", limits.limits.minUniformBufferOffsetAlignment);
+		fmt::println("minStorageBufferOffsetAlignment: {}", limits.limits.minStorageBufferOffsetAlignment);
+		fmt::println("maxVertexBuffers: {}", limits.limits.maxVertexBuffers);
+		fmt::println("maxVertexAttributes: {}", limits.limits.maxVertexAttributes);
+		fmt::println("maxVertexBufferArrayStride: {}", limits.limits.maxVertexBufferArrayStride);
+		fmt::println("maxInterStageShaderComponents: {}", limits.limits.maxInterStageShaderComponents);
+		fmt::println("maxComputeWorkgroupStorageSize: {}", limits.limits.maxComputeWorkgroupStorageSize);
+		fmt::println("maxComputeInvocationsPerWorkgroup: {}", limits.limits.maxComputeInvocationsPerWorkgroup);
+		fmt::println("maxComputeWorkgroupSizeX: {}", limits.limits.maxComputeWorkgroupSizeX);
+		fmt::println("maxComputeWorkgroupSizeY: {}", limits.limits.maxComputeWorkgroupSizeY);
+		fmt::println("maxComputeWorkgroupSizeZ: {}", limits.limits.maxComputeWorkgroupSizeZ);
+		fmt::println("maxComputeWorkgroupsPerDimension: {}", limits.limits.maxComputeWorkgroupsPerDimension);
         // clang-format on
     }
 
     wgpu::AdapterProperties properties = {};
     properties.nextInChain = nullptr;
     adapter.GetProperties(&properties);
-    std::cout << "Adapter properties:" << std::endl;
-    std::cout << " - vendorID: " << properties.vendorID << std::endl;
-    std::cout << " - deviceID: " << properties.deviceID << std::endl;
-    std::cout << " - name: " << properties.name << std::endl;
+    fmt::println("Adapter properties:");
+    fmt::println(" - vendorID: {}", properties.vendorID);
+    fmt::println(" - deviceID: {}", properties.deviceID);
+    fmt::println(" - name: {}", properties.name);
     if (properties.driverDescription) {
-        std::cout << " - driverDescription: " << properties.driverDescription << std::endl;
+        fmt::println(" - driverDescription: {}", properties.driverDescription);
     }
-    std::cout << " - adapterType: " << static_cast<uint32_t>(properties.adapterType) << std::endl;
-    std::cout << " - backendType: " << static_cast<uint32_t>(properties.backendType) << std::endl;
+    fmt::println(" - adapterType: {}", static_cast<uint32_t>(properties.adapterType));
+    fmt::println(" - backendType: {}", static_cast<uint32_t>(properties.backendType));
 }
 
 auto inspectDevice(wgpu::Device const& device) -> void {
@@ -133,9 +133,9 @@ auto inspectDevice(wgpu::Device const& device) -> void {
     features.resize(featureCount);
     device.EnumerateFeatures(features.data());
 
-    std::cout << "Device features:" << std::endl;
+    fmt::println("Device features:");
     for (auto f : features) {
-        std::cout << " - " << static_cast<uint32_t>(f) << std::endl;
+        fmt::println(" - {}", static_cast<uint32_t>(f));
     }
 
     wgpu::SupportedLimits limits = {};
@@ -143,33 +143,33 @@ auto inspectDevice(wgpu::Device const& device) -> void {
     bool success = device.GetLimits(&limits);
     if (success) {
         // clang-format off
-        std::printf("Device limits:\n");
-		std::printf("maxTextureDimension1D: %u\n", limits.limits.maxTextureDimension1D);
-		std::printf("maxTextureDimension2D: %u\n", limits.limits.maxTextureDimension2D);
-		std::printf("maxTextureDimension3D: %u\n", limits.limits.maxTextureDimension3D);
-		std::printf("maxTextureArrayLayers: %u\n", limits.limits.maxTextureArrayLayers);
-		std::printf("maxBindGroups: %u\n", limits.limits.maxBindGroups);
-		std::printf("maxDynamicUniformBuffersPerPipelineLayout: %u\n", limits.limits.maxDynamicUniformBuffersPerPipelineLayout);
-		std::printf("maxDynamicStorageBuffersPerPipelineLayout: %u\n", limits.limits.maxDynamicStorageBuffersPerPipelineLayout);
-		std::printf("maxSampledTexturesPerShaderStage: %u\n", limits.limits.maxSampledTexturesPerShaderStage);
-		std::printf("maxSamplersPerShaderStage: %u\n", limits.limits.maxSamplersPerShaderStage);
-		std::printf("maxStorageBuffersPerShaderStage: %u\n", limits.limits.maxStorageBuffersPerShaderStage);
-		std::printf("maxStorageTexturesPerShaderStage: %u\n", limits.limits.maxStorageTexturesPerShaderStage);
-		std::printf("maxUniformBuffersPerShaderStage: %u\n", limits.limits.maxUniformBuffersPerShaderStage);
-		std::printf("maxUniformBufferBindingSize: %llu\n", limits.limits.maxUniformBufferBindingSize);
-		std::printf("maxStorageBufferBindingSize: %llu\n", limits.limits.maxStorageBufferBindingSize);
-		std::printf("minUniformBufferOffsetAlignment: %u\n", limits.limits.minUniformBufferOffsetAlignment);
-		std::printf("minStorageBufferOffsetAlignment: %u\n", limits.limits.minStorageBufferOffsetAlignment);
-		std::printf("maxVertexBuffers: %u\n", limits.limits.maxVertexBuffers);
-		std::printf("maxVertexAttributes: %u\n", limits.limits.maxVertexAttributes);
-		std::printf("maxVertexBufferArrayStride: %u\n", limits.limits.maxVertexBufferArrayStride);
-		std::printf("maxInterStageShaderComponents: %u\n", limits.limits.maxInterStageShaderComponents);
-		std::printf("maxComputeWorkgroupStorageSize: %u\n", limits.limits.maxComputeWorkgroupStorageSize);
-		std::printf("maxComputeInvocationsPerWorkgroup: %u\n", limits.limits.maxComputeInvocationsPerWorkgroup);
-		std::printf("maxComputeWorkgroupSizeX: %u\n", limits.limits.maxComputeWorkgroupSizeX);
-		std::printf("maxComputeWorkgroupSizeY: %u\n", limits.limits.maxComputeWorkgroupSizeY);
-		std::printf("maxComputeWorkgroupSizeZ: %u\n", limits.limits.maxComputeWorkgroupSizeZ);
-		std::printf("maxComputeWorkgroupsPerDimension: %u\n", limits.limits.maxComputeWorkgroupsPerDimension);
+        fmt::println("Device limits:");
+		fmt::println("maxTextureDimension1D: {}", limits.limits.maxTextureDimension1D);
+		fmt::println("maxTextureDimension2D: {}", limits.limits.maxTextureDimension2D);
+		fmt::println("maxTextureDimension3D: {}", limits.limits.maxTextureDimension3D);
+		fmt::println("maxTextureArrayLayers: {}", limits.limits.maxTextureArrayLayers);
+		fmt::println("maxBindGroups: {}", limits.limits.maxBindGroups);
+		fmt::println("maxDynamicUniformBuffersPerPipelineLayout: {}", limits.limits.maxDynamicUniformBuffersPerPipelineLayout);
+		fmt::println("maxDynamicStorageBuffersPerPipelineLayout: {}", limits.limits.maxDynamicStorageBuffersPerPipelineLayout);
+		fmt::println("maxSampledTexturesPerShaderStage: {}", limits.limits.maxSampledTexturesPerShaderStage);
+		fmt::println("maxSamplersPerShaderStage: {}", limits.limits.maxSamplersPerShaderStage);
+		fmt::println("maxStorageBuffersPerShaderStage: {}", limits.limits.maxStorageBuffersPerShaderStage);
+		fmt::println("maxStorageTexturesPerShaderStage: {}", limits.limits.maxStorageTexturesPerShaderStage);
+		fmt::println("maxUniformBuffersPerShaderStage: {}", limits.limits.maxUniformBuffersPerShaderStage);
+		fmt::println("maxUniformBufferBindingSize: {}", limits.limits.maxUniformBufferBindingSize);
+		fmt::println("maxStorageBufferBindingSize: {}", limits.limits.maxStorageBufferBindingSize);
+		fmt::println("minUniformBufferOffsetAlignment: {}", limits.limits.minUniformBufferOffsetAlignment);
+		fmt::println("minStorageBufferOffsetAlignment: {}", limits.limits.minStorageBufferOffsetAlignment);
+		fmt::println("maxVertexBuffers: {}", limits.limits.maxVertexBuffers);
+		fmt::println("maxVertexAttributes: {}", limits.limits.maxVertexAttributes);
+		fmt::println("maxVertexBufferArrayStride: {}", limits.limits.maxVertexBufferArrayStride);
+		fmt::println("maxInterStageShaderComponents: {}", limits.limits.maxInterStageShaderComponents);
+		fmt::println("maxComputeWorkgroupStorageSize: {}", limits.limits.maxComputeWorkgroupStorageSize);
+		fmt::println("maxComputeInvocationsPerWorkgroup: {}", limits.limits.maxComputeInvocationsPerWorkgroup);
+		fmt::println("maxComputeWorkgroupSizeX: {}", limits.limits.maxComputeWorkgroupSizeX);
+		fmt::println("maxComputeWorkgroupSizeY: {}", limits.limits.maxComputeWorkgroupSizeY);
+		fmt::println("maxComputeWorkgroupSizeZ: {}", limits.limits.maxComputeWorkgroupSizeZ);
+		fmt::println("maxComputeWorkgroupsPerDimension: {}", limits.limits.maxComputeWorkgroupsPerDimension);
         // clang-format on
     }
 }
@@ -193,7 +193,7 @@ auto errorCallback(WGPUErrorType errorType, const char* message, void*) -> void 
         default:
             type = "Unknown";
     }
-    std::printf("%s error: %s\n", type, message);
+    fmt::println("{} error: {}", type, message);
 }
 
 }  // namespace tobi::gpu

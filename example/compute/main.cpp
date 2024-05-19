@@ -1,13 +1,15 @@
 #include <tobi/GPU.hpp>
 
+#include <fmt/format.h>
+#include <fmt/os.h>
+
 #if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
 #endif
 
 #include <cassert>
-#include <cstdio>
 #include <cstdlib>
-#include <iostream>
+#include <cstring>
 
 static constexpr auto const* ShaderCode = R"(
     @group(0) @binding(0) var<storage, read> lhs: array<f32>;
@@ -130,9 +132,9 @@ auto main(int, char**) -> int {
 
     // Print dataOut
     for (size_t i = 0; i < 10; ++i) {
-        std::cout << dataOut[i] << " ";
+        fmt::print("{} ", dataOut[i]);
     }
-    std::cout << std::endl;
+    fmt::println("");
 
     return EXIT_SUCCESS;
 }

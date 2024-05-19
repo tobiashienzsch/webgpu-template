@@ -18,6 +18,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 add_subdirectory(3rd_party/clap EXCLUDE_FROM_ALL)
+add_subdirectory(3rd_party/fmt EXCLUDE_FROM_ALL)
+
 add_subdirectory(lib/imgui EXCLUDE_FROM_ALL)
 add_subdirectory(lib/miniaudio EXCLUDE_FROM_ALL)
 add_subdirectory(lib/webgpu EXCLUDE_FROM_ALL)
