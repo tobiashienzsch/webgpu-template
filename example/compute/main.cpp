@@ -1,5 +1,9 @@
 #include <tobi/GPU.hpp>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
+
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>

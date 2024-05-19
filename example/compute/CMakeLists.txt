@@ -3,7 +3,7 @@ project(compute)
 
 add_executable(compute main.cpp)
 target_include_directories(compute PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(compute PRIVATE webgpu)
+target_link_libraries(compute PRIVATE tobi)
 
 if(EMSCRIPTEN)
     target_link_options(compute
