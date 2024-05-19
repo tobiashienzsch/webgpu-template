@@ -8,13 +8,14 @@ target_link_libraries(compute PRIVATE webgpu)
 if(EMSCRIPTEN)
     target_link_options(compute
         PRIVATE
-            "-sUSE_WEBGPU=1"
-            "-sWASM=1"
-            "-sALLOW_MEMORY_GROWTH=1"
-            "-sNO_EXIT_RUNTIME=0"
-            "-sASSERTIONS=1"
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-            "-sNO_FILESYSTEM=1"
+            "SHELL:-s USE_WEBGPU=1"
+            "SHELL:-s WASM=1"
+            "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+            "SHELL:-s NO_EXIT_RUNTIME=0"
+            "SHELL:-s ASSERTIONS=1"
+            "SHELL:-s DISABLE_EXCEPTION_CATCHING=1"
+            "SHELL:-s NO_FILESYSTEM=1"
+            "SHELL:-s ASYNCIFY=1"
     )
 
     set_target_properties(compute PROPERTIES OUTPUT_NAME "index")
