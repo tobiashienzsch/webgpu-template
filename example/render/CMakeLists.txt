@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 project(render)
 
+find_package(clap CONFIG REQUIRED)
+
 add_executable(render main.cpp)
 target_link_libraries(render PRIVATE tobi clap)
 

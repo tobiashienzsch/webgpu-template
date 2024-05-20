@@ -6,6 +6,9 @@
 #include <cassert>
 #include <stdexcept>
 
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+
 namespace tobi {
 
 AudioDevice::~AudioDevice() {
