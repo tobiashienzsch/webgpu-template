@@ -2,6 +2,7 @@
     "dependencies": [
         "clap-cleveraudio",
         "fmt",
+        "glm",
         "miniaudio"
     ]
 }
