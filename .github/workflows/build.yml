@@ -30,7 +30,7 @@ jobs:
           - name: Emscripten
             os: ubuntu-24.04
             vcpkg_triplet: "wasm32-emscripten"
-            cmake_flags: "-D CMAKE_CROSSCOMPILING_EMULATOR=$EMSDK_NODE"
+            cmake_flags: "-D VCPKG_CHAINLOAD_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake -D CMAKE_CROSSCOMPILING_EMULATOR=$EMSDK_NODE"
             osx_target: ""
 
           - name: Linux
