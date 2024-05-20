@@ -30,26 +30,31 @@ jobs:
           - name: Emscripten
             os: ubuntu-24.04
             vcpkg_triplet: "wasm32-emscripten"
+            cmake_flags: "-D CMAKE_CROSSCOMPILING_EMULATOR=$EMSDK_NODE"
             osx_target: ""
 
           - name: Linux
             os: ubuntu-24.04
             vcpkg_triplet: "x64-linux"
+            cmake_flags: ""
             osx_target: ""
 
           - name: macOS-X64
             os: macos-13
             vcpkg_triplet: "x64-osx"
+            cmake_flags: ""
             osx_target: "10.15"
 
           - name: macOS-ARM64
             os: macos-14
             vcpkg_triplet: "arm64-osx"
+            cmake_flags: ""
             osx_target: "11.0"
 
           - name: Windows
             os: windows-latest
             vcpkg_triplet: "x64-windows-static-md"
+            cmake_flags: ""
             osx_target: ""
 
     steps:
@@ -104,6 +109,7 @@ jobs:
           -G "Ninja Multi-Config"
           -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
           -D VCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_triplet }}
+          ${{ matrix.cmake_flags }}
 
       - name: CMake build
         shell: bash
